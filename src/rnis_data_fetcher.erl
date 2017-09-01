@@ -35,8 +35,9 @@ handle_cast(_Request, State) ->
 handle_info(_Info, State) ->
   {noreply, State}.
 
-terminate(_Reason, #state{rnis_pid = {Pid,Node}, lsocket = LSocket}) ->
+terminate(_Reason, #state{rnis_pid = RnisPid, lsocket = LSocket}) ->
   gen_tcp:close(LSocket),
+  RnisPid ! stop,
   ok.
 
 code_change(_OldVsn, State, _Extra) ->
