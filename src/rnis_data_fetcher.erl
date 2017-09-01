@@ -20,6 +20,7 @@
 
 %% Callbacks
 start_link(Lables) ->
+  lager:info("start rnis_data_fetcher on node ~p", [node()]),
   gen_server:start_link({local, ?MODULE}, ?MODULE, [Lables], []).
 
 init([Labels]) ->
@@ -35,7 +36,8 @@ handle_cast(_Request, State) ->
 handle_info(_Info, State) ->
   {noreply, State}.
 
-terminate(_Reason, #state{rnis_pid = RnisPid, lsocket = LSocket}) ->
+terminate(Reason, #state{rnis_pid = RnisPid, lsocket = LSocket}) ->
+  lager:info("terminate rnis_data_fetcher with reason: ~p" , [Reason]),
   gen_tcp:close(LSocket),
   RnisPid ! stop,
   ok.
@@ -45,11 +47,15 @@ code_change(_OldVsn, State, _Extra) ->
 
 connect_to_rnis(Lables)->
   RnisHosts = application:get_env(rnis_data_fetcher, rnis_hosts, []),
+  lager:info("rnis_hosts: ~p", [RnisHosts]),
   Port = application:get_env(rnis_data_fetcher, rnis_connection_port, 9845),
+  lager:info("port: ~p", [Port]),
   case create_rnis_service(RnisHosts, Port) of
     {ok,Pid}->
+      lager:info("pid of created service: ~p", [Pid]),
       case connect_rnis_socket(Pid, Port) of
         ok->
+          lager:info("connected to rnis socket"),
           Pid ! {cmd, {auth, subscribe, Lables}, self()},
           {ok,#state{port = Port, rnis_pid = Pid}};
         Error->
