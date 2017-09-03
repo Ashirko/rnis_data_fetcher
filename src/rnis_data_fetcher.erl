@@ -70,11 +70,13 @@ connect_to_rnis(Lables)->
 create_rnis_service([], _)->
   error;
 create_rnis_service([Node|T], Port)->
+  lager:info("try to connect to ~p", [Node]),
   Connection = #plain_connection{parser = rnis_data_egts_parser},
   case rpc:call(Node,rnis_data_socket_server,start_link,[Connection]) of
     {ok,Pid}->
       {ok,{Pid,Node}};
-    _->
+    Error->
+      lager:info("connectioin error to ~p : ~p", [Node, Error]),
       create_rnis_service(T, Port)
   end.
 
