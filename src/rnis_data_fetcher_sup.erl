@@ -28,12 +28,18 @@ init([Port, Labels]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     DataFetcher = {
         rnis_data_fetcher,
-        {rnis_data_fetcher, start_link, [Labels]},
-        permanent, 5000, supervisor, [rnis_data_socket_sup]},
+        {rnis_data_fetcher, start_link, [Labels, self()]},
+        permanent, 5000, supervisor, [rnis_data_fetcher]},
     ParserSup = {
-        rnis_data_parser_sup,
-        {rnis_data_parser_sup, start_link, [rnis_data_egts_parser, tcp, [{port, Port}]]},
+%%        rnis_data_parser_sup,
+%%%%        {rnis_data_parser_sup, start_link, [nn, tcp, []]},
+%%        {rnis_data_parser_sup, start_link, [nn, tcp, [{port, Port}]]},
+%%        permanent, 5000, supervisor, [rnis_data_socket_sup]},
+        rnis_data_socket_sup,
+%%        {rnis_data_parser_sup, start_link, [nn, tcp, []]},
+        {rnis_data_socket_sup, start_link, [nn, tcp, [{port, Port}]]},
         permanent, 5000, supervisor, [rnis_data_socket_sup]},
 
-    {ok, {SupFlags, [DataFetcher, ParserSup]}}.
+    {ok, {SupFlags, [ParserSup, DataFetcher]}}.
+%%    {ok, {SupFlags, [DataFetcher]}}.
 

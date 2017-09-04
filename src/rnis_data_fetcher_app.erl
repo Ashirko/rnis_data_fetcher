@@ -10,7 +10,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    Port = application:get_env(rnis_data_fetcher, rnis_connection_port, 4017),
+    Port = application:get_env(rnis_data_fetcher, rpd_connection_port, 8436),
     Labels = application:get_env(rnis_data_fetcher, data_lables, <<"all">>),
     rnis_data_fetcher_sup:start_link(Port,Labels).
 

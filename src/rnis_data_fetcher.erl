@@ -23,8 +23,9 @@ start_link(Lables) ->
   lager:info("start rnis_data_fetcher on node ~p", [node()]),
   gen_server:start_link({local, ?MODULE}, ?MODULE, [Lables], []).
 
-init([Labels]) ->
+init([SupPid, Labels]) ->
   {ok, State} = connect_to_rnis(Labels),
+  redirect_to_parser(SupPid, State),
   {ok, State}.
 
 handle_call(_Request, _From, State) ->
@@ -81,3 +82,17 @@ subscribe_data(Socket, Lables) when is_binary(Lables)->
   Msg = <<"RNIS-subscribe-@", Lables/binary, "@">>,
   lager:info("subscribe msg: ~p", [Msg]),
   gen_tcp:send(Socket, Msg).
+
+redirect_to_parser(SupPid, Socket)->
+  SupChildren = supervisor:which_children(SupPid),
+  lager:info("SupChildren: ~p", [SupChildren]),
+  {_, SocketSupPid, _, _}
+    = lists:keyfind(rnis_data_socket_sup, 1, SupChildren),
+
+  {ok, Pid} = rnis_data_socket_sup:start_socket(
+    SocketSupPid,
+    #plain_connection{parser = rnis_data_egts_parser}
+  ),
+  ok = gen_tcp:controlling_process(Socket, Pid).
+%%  ok = rnis_data_socket_server:set_socket(Pid, Socket),
+
