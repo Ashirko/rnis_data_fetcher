@@ -1,4 +1,4 @@
--module(rnis_data_fetcher).
+-module(  rnis_data_fetcher).
 
 -behaviour(gen_server).
 
@@ -16,7 +16,7 @@
 
 -include_lib("../../rnis_data/include/rnis_data.hrl").
 
--record(state, {port, lsocket, rnis_pid}).
+-record(state, {port, socket}).
 
 %% Callbacks
 start_link(Lables) ->
@@ -36,10 +36,9 @@ handle_cast(_Request, State) ->
 handle_info(_Info, State) ->
   {noreply, State}.
 
-terminate(Reason, #state{rnis_pid = RnisPid, lsocket = LSocket}) ->
+terminate(Reason, #state{socket = LSocket}) ->
   lager:info("terminate rnis_data_fetcher with reason: ~p" , [Reason]),
   gen_tcp:close(LSocket),
-  RnisPid ! stop,
   ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -48,42 +47,37 @@ code_change(_OldVsn, State, _Extra) ->
 connect_to_rnis(Lables)->
   RnisHosts = application:get_env(rnis_data_fetcher, rnis_hosts, []),
   lager:info("rnis_hosts: ~p", [RnisHosts]),
-  Port = application:get_env(rnis_data_fetcher, rnis_connection_port, 9845),
+  Port = application:get_env(rnis_data_fetcher, rnis_connection_port, 4017),
   lager:info("port: ~p", [Port]),
-  case create_rnis_service(RnisHosts, Port) of
-    {ok,Pid}->
-      lager:info("pid of created service: ~p", [Pid]),
-      case connect_rnis_socket(Pid, Port) of
+  case connect_egts_parser(RnisHosts, Port) of
+    {ok,Socket}->
+      lager:info("created socket: ~p", [Socket]),
+      case subscribe_data(Socket, Lables) of
         ok->
           lager:info("connected to rnis socket"),
-          Pid ! {cmd, {auth, subscribe, Lables}, self()},
-          {ok,#state{port = Port, rnis_pid = Pid}};
+          {ok,#state{port = Port, socket = Socket}};
         Error->
           lager:error("create_socket_error: ~p", [Error]),
           {error, create_socket_error}
       end;
     ConnError->
-      lager:error("connection_error: ~p", [ConnError]),
+      lager:error("connect_egts_parser error: ~p", [ConnError]),
       {error, connection_error}
   end.
 
-create_rnis_service([], _)->
+connect_egts_parser([], _)->
   error;
-create_rnis_service([Node|T], Port)->
+connect_egts_parser([Node|T], Port)->
   lager:info("try to connect to ~p", [Node]),
-  Connection = #plain_connection{parser = rnis_data_egts_parser},
-  case rpc:call(Node,rnis_data_socket_server,start_link,[Connection]) of
-    {ok,Pid}->
-      {ok,{Pid,Node}};
+  case gen_tcp:connect(Node, Port, [binary, {active,true}]) of
+    {ok,Socket}->
+      {ok,Socket};
     Error->
       lager:info("connectioin error to ~p : ~p", [Node, Error]),
-      create_rnis_service(T, Port)
+      connect_egts_parser(T, Port)
   end.
 
-connect_rnis_socket({Pid,Node}, Port)->
-  case rpc:call(Node, gen_tcp, connect, [node(), Port, [binary]]) of
-    {ok,Socket}->
-      rpc:call(Node, rnis_data_socket_server, set_socket, [Pid, Socket]);
-    Error->
-      Error
-  end.
+subscribe_data(Socket, Lables) when is_binary(Lables)->
+  Msg = <<"RNIS-subscribe-@", Lables/binary, "@">>,
+  lager:info("subscribe msg: ~p", [Msg]),
+  gen_tcp:send(Socket, Msg).
