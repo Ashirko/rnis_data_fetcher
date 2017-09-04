@@ -25,6 +25,7 @@ start_link(SupPid, Lables) ->
 
 init([SupPid, Labels]) ->
   {ok, State} = connect_to_rnis(Labels),
+  lager:info("connected_to_rnis: ~p" , [State]),
   redirect_to_parser(SupPid, State),
   {ok, State}.
 
@@ -55,7 +56,7 @@ connect_to_rnis(Lables)->
       lager:info("created socket: ~p", [Socket]),
       case subscribe_data(Socket, Lables) of
         ok->
-          lager:info("connected to rnis socket"),
+          lager:info("subscribed to data"),
           {ok,#state{port = Port, socket = Socket}};
         Error->
           lager:error("create_socket_error: ~p", [Error]),
@@ -84,6 +85,7 @@ subscribe_data(Socket, Lables) when is_binary(Lables)->
   gen_tcp:send(Socket, Msg).
 
 redirect_to_parser(SupPid, Socket)->
+  lager:info("start redirect_to_parser: ~p", [SupPid]),
   SupChildren = supervisor:which_children(SupPid),
   lager:info("SupChildren: ~p", [SupChildren]),
   {_, SocketSupPid, _, _}
