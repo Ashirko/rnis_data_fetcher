@@ -85,7 +85,7 @@ subscribe_data(Socket, Lables) when is_binary(Lables)->
   lager:info("subscribe msg: ~p", [Msg]),
   gen_tcp:send(Socket, Msg).
 
-redirect_to_parser(SupPid, Socket)->
+redirect_to_parser(SupPid, #state{socket = Socket})->
   lager:info("start redirect_to_parser: ~p", [SupPid]),
 %%  SupChildren = supervisor:which_children(SupPid),
 %%  lager:info("SupChildren: ~p", [SupChildren]),
