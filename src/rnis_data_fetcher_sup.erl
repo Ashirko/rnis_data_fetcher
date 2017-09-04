@@ -37,7 +37,7 @@ init([Port, Labels]) ->
 %%        permanent, 5000, supervisor, [rnis_data_socket_sup]},
         rnis_data_socket_sup,
 %%        {rnis_data_parser_sup, start_link, [nn, tcp, []]},
-        {rnis_data_socket_sup, start_link, [nn, tcp, [{port, Port}]]},
+        {rnis_data_socket_sup, start_link, [rpc_socket_sup]},
         permanent, 5000, supervisor, [rnis_data_socket_sup]},
 
     {ok, {SupFlags, [ParserSup, DataFetcher]}}.
