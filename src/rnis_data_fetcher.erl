@@ -94,7 +94,7 @@ redirect_to_parser(SupPid, #state{socket = Socket})->
 
   {ok, Pid} = rnis_data_socket_sup:start_socket(
     rpc_socket_sup,
-    #plain_connection{parser = rnis_data_egts_parser}
+    #plain_connection{parser = {rnis_data_egts_parser, tcp, 0}}
   ),
   lager:info("Pid of parser: ~p", [Pid]),
   ok = gen_tcp:controlling_process(Socket, Pid),
