@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1]).
+-export([start_link/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -19,9 +19,9 @@
 -record(state, {port, socket}).
 
 %% Callbacks
-start_link(Lables) ->
+start_link(SupPid, Lables) ->
   lager:info("start rnis_data_fetcher on node ~p", [node()]),
-  gen_server:start_link({local, ?MODULE}, ?MODULE, [Lables], []).
+  gen_server:start_link({local, ?MODULE}, ?MODULE, [SupPid, Lables], []).
 
 init([SupPid, Labels]) ->
   {ok, State} = connect_to_rnis(Labels),

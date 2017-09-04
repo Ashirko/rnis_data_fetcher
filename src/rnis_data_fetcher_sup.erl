@@ -28,7 +28,7 @@ init([Port, Labels]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     DataFetcher = {
         rnis_data_fetcher,
-        {rnis_data_fetcher, start_link, [Labels, self()]},
+        {rnis_data_fetcher, start_link, [self(), Labels]},
         permanent, 5000, supervisor, [rnis_data_fetcher]},
     ParserSup = {
 %%        rnis_data_parser_sup,
