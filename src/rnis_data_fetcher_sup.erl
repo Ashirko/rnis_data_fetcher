@@ -3,7 +3,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/2]).
+-export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -14,32 +14,21 @@
 %% API functions
 %% ===================================================================
 
-start_link(Port, Labels) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [Port, Labels]).
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
-init([Port, Labels]) ->
+init([]) ->
     RestartStrategy = one_for_all,
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     DataFetcher = {
-        rnis_data_fetcher,
-        {rnis_data_fetcher, start_link, [self(), Labels]},
-        permanent, 5000, supervisor, [rnis_data_fetcher]},
-    ParserSup = {
-%%        rnis_data_parser_sup,
-%%%%        {rnis_data_parser_sup, start_link, [nn, tcp, []]},
-%%        {rnis_data_parser_sup, start_link, [nn, tcp, [{port, Port}]]},
-%%        permanent, 5000, supervisor, [rnis_data_socket_sup]},
-        rpd_sup,
-%%        {rnis_data_parser_sup, start_link, [nn, tcp, []]},
-        {rnis_data_socket_sup, start_link, [rpc_socket_sup]},
-        permanent, 5000, supervisor, [rnis_data_socket_sup]},
-
-    {ok, {SupFlags, [ParserSup, DataFetcher]}}.
-%%    {ok, {SupFlags, [DataFetcher]}}.
+        rnis_data_egts_fetcher,
+        {rnis_data_egts_fetcher, start_link, []},
+        permanent, 5000, worker, [rnis_data_egts_fetcher]},
+    {ok, {SupFlags, [DataFetcher]}}.
 
