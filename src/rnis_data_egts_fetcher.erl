@@ -60,7 +60,7 @@ init([]) ->
   {ok, data, #state{socket = Socket, next = process_message}, ?CONNECT_TIMEOUT}.
 
 data(timeout, State) ->
-  {stop, timeout, State};
+  process_data(timeout, State);
 data(Msg, State) ->
   lager:error("Unknown async message: ~p", [Msg]),
   {stop, unknown_message, State}.
