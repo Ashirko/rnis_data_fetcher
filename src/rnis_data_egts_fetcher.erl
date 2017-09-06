@@ -40,7 +40,8 @@
 -define(MAXBUFSZ, 102400). %% 100 kilobytes
 
 -define(NEXT_DATA(Data, State, Rest, Answer),
-  {next, #parser_result{data = Data, state = State#state{buffer = Rest}, answer = Answer, next = check_data}, ?RIGHT_NOW}).
+  {next, #parser_result{data = Data, state = State#state{buffer = Rest}, answer = Answer, next = check_data}}).
+%%  {next, #parser_result{data = Data, state = State#state{buffer = Rest}, answer = Answer, next = check_data}, ?RIGHT_NOW}).
 
 -define(NEXT(ReceiveTime, Reply, Data, State, TimeOut),
   {next_state, data,
@@ -158,14 +159,14 @@ process_data(MsgData, State) ->
   case catch process_message(MsgData, State) of
     {next, #parser_result{data = Data, answer = Answer}} ->
       ?NEXT(CurTime, Answer, Data, State, ?ACTIVE_TIMEOUT);
-    {next, #parser_result{data = Data, answer = Answer}, Timeout} ->
-      ?NEXT(CurTime, Answer, Data, State, Timeout);
+%%    {next, #parser_result{data = Data, answer = Answer}, Timeout} ->
+%%      ?NEXT(CurTime, Answer, Data, State, Timeout);
     {error, Error, #parser_result{data = Data, answer = Answer}} ->
       lager:error("parser error:  ~p", [Error]),
       ?NEXT(CurTime, Answer, Data, State, ?ACTIVE_TIMEOUT);
-    {error, Error, #parser_result{data = Data, answer = Answer}, Timeout} ->
-      lager:error("parser error:  ~p", [Error]),
-      ?NEXT(CurTime, Answer, Data, State, Timeout);
+%%    {error, Error, #parser_result{data = Data, answer = Answer}, Timeout} ->
+%%      lager:error("parser error:  ~p", [Error]),
+%%      ?NEXT(CurTime, Answer, Data, State, Timeout);
     {stop, Reason} ->
       lager:error("Data process error: ~p", [Reason]),
       {stop, Reason, State};
