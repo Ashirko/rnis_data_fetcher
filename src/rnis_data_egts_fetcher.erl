@@ -156,7 +156,7 @@ code_change(_OldVsn, StateName, #state{timeout = TimeOut} = StateData, _Extra) -
 process_data(MsgData, #state{next = Next} = State) ->
   lager:info("process_data: ~p", [MsgData]),
   CurTime = zont_time_util:system_time(millisec),
-  case catch Next(MsgData, State) of
+  case catch ?MODULE:Next(MsgData, State) of
 %%  case catch process_message(MsgData, State) of
     {next, #parser_result{data = Data, answer = Answer, next = NewNext}} ->
       lager:info("process message success 1: ~p", [Data]),
