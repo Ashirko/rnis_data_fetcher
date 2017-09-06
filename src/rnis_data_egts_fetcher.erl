@@ -162,20 +162,20 @@ process_data(MsgData, #state{next = Next} = State) ->
   CurTime = zont_time_util:system_time(millisec),
   case catch ?MODULE:Next(MsgData, State) of
 %%  case catch process_message(MsgData, State) of
-    {next, #parser_result{data = Data, answer = Answer, next = NewNext}} ->
+    {next, #parser_result{data = Data, answer = Answer, next = NewNext, state = NewState}} ->
       lager:info("process message success 1: ~p", [Data]),
       lager:info("process message success 2: ~p", [Answer]),
-      ?NEXT(CurTime, Answer, Data, State, NewNext, ?ACTIVE_TIMEOUT);
-    {next, #parser_result{data = Data, answer = Answer, next = NewNext}, Timeout} ->
+      ?NEXT(CurTime, Answer, Data, NewState, NewNext, ?ACTIVE_TIMEOUT);
+    {next, #parser_result{data = Data, answer = Answer, next = NewNext, state = NewState}, Timeout} ->
       lager:info("process message success 3: ~p", [Data]),
       lager:info("process message success 4: ~p", [Answer]),
-      ?NEXT(CurTime, Answer, Data, State, NewNext, Timeout);
-    {error, Error, #parser_result{data = Data, answer = Answer, next = NewNext}} ->
+      ?NEXT(CurTime, Answer, Data, NewState, NewNext, Timeout);
+    {error, Error, #parser_result{data = Data, answer = Answer, next = NewNext, state = NewState}} ->
       lager:error("parser error:  ~p", [Error]),
-      ?NEXT(CurTime, Answer, Data, State, NewNext, ?ACTIVE_TIMEOUT);
-    {error, Error, #parser_result{data = Data, answer = Answer, next = NewNext}, Timeout} ->
+      ?NEXT(CurTime, Answer, Data, NewState, NewNext, ?ACTIVE_TIMEOUT);
+    {error, Error, #parser_result{data = Data, answer = Answer, next = NewNext, state = NewState}, Timeout} ->
       lager:error("parser error:  ~p", [Error]),
-      ?NEXT(CurTime, Answer, Data, State, NewNext, Timeout);
+      ?NEXT(CurTime, Answer, Data, NewState, NewNext, Timeout);
     {stop, Reason} ->
       lager:error("Data process error: ~p", [Reason]),
       {stop, Reason, State};
