@@ -114,7 +114,7 @@ process_result(_, _, _) ->
 make_value(#egts{time = Time, latitude = Lat,
   longitude = Lon, speed = Spd,
   bearing = Bear, alarm_button = ABtn,
-  valid = Valid, id = OID}) ->
+  valid = _Valid, id = _OID}) ->
   Rd = [
     {<<"lat">>, Lat},
     {<<"lon">>, Lon},
@@ -197,8 +197,8 @@ check_data(NewAddBuf, State) when is_binary(NewAddBuf) ->
 next(ReceiveTime, Reply, DataToProcess,
     #state{socket = Sock} = State) ->
   ok = reply(Sock, Reply),
-  ok = zont_process(ReceiveTime, DataToProcess),
   lager:info("DataToProcess: ~p", [DataToProcess]),
+  ok = zont_process(ReceiveTime, DataToProcess),
   ok = set_active(Sock),
   State.
 
@@ -232,7 +232,12 @@ filter_data(ReceiveTime, Data) when is_list(Data) ->
       _ ->
         case ID of
           I when is_integer(I)->
-            [{I, extend_data(ReceiveTime, TimeList, [])} | Acc];
+            case mnesia:dirty_read(att, I) of
+              []->
+                [{{tmp,I}, extend_data(ReceiveTime, TimeList, [])} | Acc];
+              List when is_list(List)->
+                [{I, extend_data(ReceiveTime, TimeList, [])} | Acc]
+            end;
           DevID->
             [{{tmp,DevID}, extend_data(ReceiveTime, TimeList, [])} | Acc]
         end
