@@ -232,7 +232,7 @@ filter_data(ReceiveTime, Data) when is_list(Data) ->
       _ ->
         case ID of
           I when is_integer(I)->
-            case mnesia:dirty_read(att, I) of
+            case mnesia:dirty_read(att_descr, I) of
               []->
                 [{{tmp,I}, extend_data(ReceiveTime, TimeList, [])} | Acc];
               List when is_list(List)->
