@@ -79,7 +79,7 @@ process_message(NewAddBuf, #state{buffer = CurrBuf, packetId = AnsPID, recordId 
         }, ?TIMEOUT};
     {ok, ResultList, PackID, RecIDs, Rest} ->
       Answer = answer(PackID, RecIDs, AnsPID, AnsRID),
-      ?NEXT_DATA(process_data(0, lists:sort(lists:flatten(ResultList))),
+      ?NEXT_DATA(process_result(0, lists:sort(lists:flatten(ResultList))),
         State#state{packetId = (AnsPID + 1) band 16#ffff, recordId = (AnsRID + 1) band 16#ffff}, Rest, Answer);
     {error, Reason} ->
       lager:error("error parse data ~p", [Reason]),
@@ -89,6 +89,35 @@ process_message(NewAddBuf, #state{buffer = CurrBuf, packetId = AnsPID, recordId 
           next = data
         }, ?TIMEOUT}
   end.
+
+process_result(I, R) ->
+  process_result(I, R, []).
+%
+process_result(_OID, [], []) ->
+  [];
+process_result(OID, [], Acc) ->
+  [{OID, lists:reverse(Acc)}];
+process_result(OID, [#egts{id = OID} = I | R], Acc) ->
+  process_result(OID, R, [make_value(I) | Acc]);
+process_result(OID, [#egts{id = New} = I | R], []) when OID /= New ->
+  process_result(New, R, [make_value(I)]);
+process_result(OID, [#egts{id = New} = I | R], Acc) ->
+  [{OID, lists:reverse(Acc)} | process_result(New, R, [make_value(I)])];
+process_result(_, _, _) ->
+  [].
+
+make_value(#egts{time = Time, latitude = Lat,
+  longitude = Lon, speed = Spd,
+  bearing = Bear, alarm_button = ABtn,
+  valid = Valid, id = OID}) ->
+  Rd = [
+    {<<"lat">>, Lat},
+    {<<"lon">>, Lon},
+    {<<"bearing">>, Bear},
+    {<<"speed">>, Spd},
+    {<<"a_btn">>, b2i(ABtn)}
+  ],
+  {Time, Rd}.
 
 handle_info(_Info, State) ->
   {noreply, State}.
@@ -414,6 +443,11 @@ tf(I) when is_integer(I) andalso I > 0 ->
   true;
 tf(_) ->
   false.
+%
+b2i(true) ->
+  1;
+b2i(_) ->
+  0.
 
 %
 
