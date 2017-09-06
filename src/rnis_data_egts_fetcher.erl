@@ -54,7 +54,7 @@ start_link() ->
 
 init([]) ->
   {ok, Socket} = connect_to_egts(),
-%%  subscribe_data(Socket),
+  subscribe_data(Socket),
   lager:info("rnis_data_fetcher started"),
   {ok, data, #state{socket = Socket}, ?CONNECT_TIMEOUT}.
 
