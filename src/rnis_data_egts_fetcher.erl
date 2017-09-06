@@ -20,7 +20,7 @@
 
 -include_lib("../../rnis_data/include/rnis_data.hrl").
 
--record(state, {socket, buffer = <<>>, packetId = 0, recordId = 0, timeout}).
+-record(state, {socket, next, buffer = <<>>, packetId = 0, recordId = 0, timeout}).
 
 -record(egts, {id, time, valid = false, latitude, longitude, speed, bearing, alarm_button = false}).
 
@@ -40,12 +40,12 @@
 -define(MAXBUFSZ, 102400). %% 100 kilobytes
 
 -define(NEXT_DATA(Data, State, Rest, Answer),
-  {next, #parser_result{data = Data, state = State#state{buffer = Rest}, answer = Answer, next = check_data}}).
-%%  {next, #parser_result{data = Data, state = State#state{buffer = Rest}, answer = Answer, next = check_data}, ?RIGHT_NOW}).
+%%  {next, #parser_result{data = Data, state = State#state{buffer = Rest}, answer = Answer, next = check_data}}).
+  {next, #parser_result{data = Data, state = State#state{buffer = Rest}, answer = Answer, next = check_data}, ?RIGHT_NOW}).
 
--define(NEXT(ReceiveTime, Reply, Data, State, TimeOut),
+-define(NEXT(ReceiveTime, Reply, Data, State, Next, TimeOut),
   {next_state, data,
-    next(ReceiveTime, Reply, Data, State#state{timeout = TimeOut}),
+    next(ReceiveTime, Reply, Data, State#state{next = Next, timeout = TimeOut}),
     TimeOut}).
 
 %% Callbacks
@@ -57,7 +57,7 @@ init([]) ->
   {ok, Socket} = connect_to_egts(),
   subscribe_data(Socket),
   lager:info("rnis_data_fetcher started"),
-  {ok, data, #state{socket = Socket}, ?CONNECT_TIMEOUT}.
+  {ok, data, #state{socket = Socket, next = process_message}, ?CONNECT_TIMEOUT}.
 
 data(timeout, State) ->
   {stop, timeout, State};
@@ -76,7 +76,7 @@ process_message(NewAddBuf, #state{buffer = CurrBuf, packetId = AnsPID, recordId 
       {next,
         #parser_result{
           state = State#state{buffer = Rest},
-          next = data
+          next = process_message
         }, ?TIMEOUT};
     {ok, ResultList, PackID, RecIDs, Rest} ->
       Answer = answer(PackID, RecIDs, AnsPID, AnsRID),
@@ -87,7 +87,7 @@ process_message(NewAddBuf, #state{buffer = CurrBuf, packetId = AnsPID, recordId 
       {error, {corrupted, Reason, CurrBuf},
         #parser_result{
           state = State#state{buffer = <<>>},
-          next = data
+          next = process_message
         }, ?TIMEOUT}
   end.
 
@@ -130,7 +130,7 @@ handle_info({tcp_error, Socket, Reason}, _StateName, #state{socket = Socket} = S
   lager:error("Socket error: ~p", [Reason]),
   {stop, normal, State};
 handle_info({tcp, _Sock, MsgData}, data, State) ->
-  lager:info("handle tcp message: ~p", [MsgData]),
+%%  lager:info("handle tcp message: ~p", [MsgData]),
   process_data(MsgData, State);
 handle_info(MsgData, _StateName, State) ->
   lager:error("ehat ~p", [MsgData]),
@@ -153,22 +153,25 @@ handle_sync_event(Event, _StateName, _From, State) ->
 code_change(_OldVsn, StateName, #state{timeout = TimeOut} = StateData, _Extra) ->
   {ok, StateName, StateData, TimeOut}.
 
-process_data(MsgData, State) ->
+process_data(MsgData, #state{next = Next} = State) ->
   lager:info("process_data: ~p", [MsgData]),
   CurTime = zont_time_util:system_time(millisec),
-  case catch process_message(MsgData, State) of
-    {next, #parser_result{data = Data, answer = Answer}} ->
+  case catch Next(MsgData, State) of
+%%  case catch process_message(MsgData, State) of
+    {next, #parser_result{data = Data, answer = Answer, next = NewNext}} ->
       lager:info("process message success 1: ~p", [Data]),
       lager:info("process message success 2: ~p", [Answer]),
-      ?NEXT(CurTime, Answer, Data, State, ?ACTIVE_TIMEOUT);
-    {next, #parser_result{data = Data, answer = Answer}, Timeout} ->
-      ?NEXT(CurTime, Answer, Data, State, Timeout);
-    {error, Error, #parser_result{data = Data, answer = Answer}} ->
+      ?NEXT(CurTime, Answer, Data, State, NewNext, ?ACTIVE_TIMEOUT);
+    {next, #parser_result{data = Data, answer = Answer, next = NewNext}, Timeout} ->
+      lager:info("process message success 3: ~p", [Data]),
+      lager:info("process message success 4: ~p", [Answer]),
+      ?NEXT(CurTime, Answer, Data, State, NewNext, Timeout);
+    {error, Error, #parser_result{data = Data, answer = Answer, next = NewNext}} ->
       lager:error("parser error:  ~p", [Error]),
-      ?NEXT(CurTime, Answer, Data, State, ?ACTIVE_TIMEOUT);
-    {error, Error, #parser_result{data = Data, answer = Answer}, Timeout} ->
+      ?NEXT(CurTime, Answer, Data, State, NewNext, ?ACTIVE_TIMEOUT);
+    {error, Error, #parser_result{data = Data, answer = Answer, next = NewNext}, Timeout} ->
       lager:error("parser error:  ~p", [Error]),
-      ?NEXT(CurTime, Answer, Data, State, Timeout);
+      ?NEXT(CurTime, Answer, Data, State, NewNext, Timeout);
     {stop, Reason} ->
       lager:error("Data process error: ~p", [Reason]),
       {stop, Reason, State};
@@ -177,10 +180,18 @@ process_data(MsgData, State) ->
       {stop, normal, State}
   end.
 
+check_data(timeout, #state{buffer = <<>>} = State) ->
+  {next, #parser_result{state = State, next = process_message}, ?TIMEOUT};
+check_data(timeout, State) ->
+  process_message(<<>>, State);
+check_data(NewAddBuf, State) when is_binary(NewAddBuf) ->
+  process_message(NewAddBuf, State).
+
 next(ReceiveTime, Reply, DataToProcess,
     #state{socket = Sock} = State) ->
   ok = reply(Sock, Reply),
   ok = zont_process(ReceiveTime, DataToProcess),
+  lager:info("DataToProcess: ~p", [DataToProcess]),
   ok = set_active(Sock),
   State.
 
@@ -195,8 +206,10 @@ reply(Sock, Data) ->
 zont_process(ReceiveTime, Data) when is_list(Data) ->
   case filter_data(ReceiveTime, Data) of
     empty ->
+      lager:info("Data empty"),
       ok;
     Data1 ->
+      lager:info("Data to data_processor: ~p", [Data1]),
       rnis_data_processor:process(Data1)
   end;
 zont_process(_, _) ->
