@@ -69,16 +69,20 @@ data(Msg, _From, State) ->
   {stop, unknown_message, State}.
 
 process_message(NewAddBuf, #state{buffer = CurrBuf} = State) when size(CurrBuf) > ?MAXBUFSZ ->
+  lager:info("process_message 0"),
   data(NewAddBuf, State#state{buffer = <<>>});
 process_message(NewAddBuf, #state{buffer = CurrBuf, packetId = AnsPID, recordId = AnsRID} = State) ->
+  lager:info("process_message 1: ~p", [size(CurrBuf)]),
   case handle_header(<<CurrBuf/binary, NewAddBuf/binary>>) of
     {continue, Rest} ->
+      lager:info("process_message 2"),
       {next,
         #parser_result{
           state = State#state{buffer = Rest},
           next = process_message
         }, ?TIMEOUT};
     {ok, ResultList, PackID, RecIDs, Rest} ->
+      lager:info("process_message 3"),
       Answer = answer(PackID, RecIDs, AnsPID, AnsRID),
       ?NEXT_DATA(process_result(0, lists:sort(lists:flatten(ResultList))),
         State#state{packetId = (AnsPID + 1) band 16#ffff, recordId = (AnsRID + 1) band 16#ffff}, Rest, Answer);
@@ -154,7 +158,7 @@ code_change(_OldVsn, StateName, #state{timeout = TimeOut} = StateData, _Extra) -
   {ok, StateName, StateData, TimeOut}.
 
 process_data(MsgData, #state{next = Next} = State) ->
-  lager:info("process_data: ~p", [MsgData]),
+  lager:info("process_data: ~p, next: ~p", [MsgData, Next]),
   CurTime = zont_time_util:system_time(millisec),
   case catch ?MODULE:Next(MsgData, State) of
 %%  case catch process_message(MsgData, State) of
@@ -181,10 +185,13 @@ process_data(MsgData, #state{next = Next} = State) ->
   end.
 
 check_data(timeout, #state{buffer = <<>>} = State) ->
+  lager:info("check_data 1"),
   {next, #parser_result{state = State, next = process_message}, ?TIMEOUT};
 check_data(timeout, State) ->
+  lager:info("check_data 2"),
   process_message(<<>>, State);
 check_data(NewAddBuf, State) when is_binary(NewAddBuf) ->
+  lager:info("check_data 3"),
   process_message(NewAddBuf, State).
 
 next(ReceiveTime, Reply, DataToProcess,
