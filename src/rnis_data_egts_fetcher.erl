@@ -8,6 +8,7 @@
 %% gen_server callbacks
 -export([init/1,
   data/2,
+  data/3,
   handle_info/2,
   handle_info/3,
   terminate/3,
@@ -60,6 +61,9 @@ init([]) ->
 data(timeout, State) ->
   {stop, timeout, State};
 data(Msg, State) ->
+  lager:error("Unknown async message: ~p", [Msg]),
+  {stop, unknown_message, State}.
+data(Msg, _From, State) ->
   lager:error("Unknown async message: ~p", [Msg]),
   {stop, unknown_message, State}.
 
