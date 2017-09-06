@@ -329,6 +329,7 @@ analyze_subrecords_auth(_) ->
   [].
 analyze_subrecord_auth_05(<<16#00, DispID:32/little>>) ->
   PID = self(),
+  lager:info("auth_05: ~p", [DispID]),
   PID ! {cmd, {auth, subscribe, DispID}, PID},
   ok;
 analyze_subrecord_auth_05(_Data) ->
