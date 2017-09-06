@@ -5,7 +5,7 @@
 %% API
 -export([start_link/0]).
 
-%% gen_server callbacks
+%% gen_fsm callbacks
 -export([init/1,
   data/2,
   data/3,
@@ -50,7 +50,7 @@
 %% Callbacks
 start_link() ->
   lager:info("start rnis_data_egts_fetcher on node ~p", [node()]),
-  gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+  gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
   {ok, Socket} = connect_to_egts(),
