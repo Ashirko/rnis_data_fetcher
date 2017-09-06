@@ -194,8 +194,8 @@ set_active(Sock) ->
   inet:setopts(Sock, [{active, once}]).
 
 connect_to_egts()->
-  Node = application:get_env(rnis_data_fetcher, rnis_connection_node),
-  Port = application:get_env(rnis_data_fetcher, rnis_connection_port),
+  {ok,Node} = application:get_env(rnis_data_fetcher, rnis_connection_node),
+  {ok,Port} = application:get_env(rnis_data_fetcher, rnis_connection_port),
   lager:info("try to connect to node ~p:~p", [Node, Port]),
   case gen_tcp:connect(Node, Port, [binary, {active, once}, {packet, 0}]) of
     {ok,Socket}->
