@@ -20,12 +20,13 @@
 
 -include_lib("../../rnis_data/include/rnis_data.hrl").
 
--record(state, {socket, next, buffer = <<>>, packetId = 0, recordId = 0, timeout}).
+-record(state, {socket, next, buffer = <<>>, packetId = 0, recordId = 0, timeout, is_ready = false}).
 
 -record(egts, {id, time, valid = false, latitude, longitude, speed, bearing, alarm_button = false}).
 
 -define(CONNECT_TIMEOUT,  600000). %% 10 minutes
 -define(ACTIVE_TIMEOUT,   600000). %% 10 minutes
+-define(INIT_TIMEOUT,   20000). %% 20 seconds
 
 -define(EGTS_PT_RESPONSE, 0).
 -define(EGTS_PT_APPDATA, 1).
@@ -55,10 +56,12 @@ start_link() ->
 
 init([]) ->
   {ok, Socket} = connect_to_egts(),
-  subscribe_data(Socket),
   lager:info("rnis_data_fetcher started"),
-  {ok, data, #state{socket = Socket, next = process_message}, ?CONNECT_TIMEOUT}.
+  {ok, data, #state{socket = Socket, next = process_message}, ?INIT_TIMEOUT}.
 
+data(timeout, #state{socket=Socket, is_ready = false}=State) ->
+  subscribe_data(Socket),
+  {next_state, data, State#state{is_ready = true}, ?CONNECT_TIMEOUT};
 data(timeout, State) ->
   process_data(timeout, State);
 data(Msg, State) ->
@@ -232,7 +235,7 @@ filter_data(ReceiveTime, Data) when is_list(Data) ->
       _ ->
         case ID of
           I when is_integer(I)->
-            case rnis_data_att_cache:is_register(I) of
+            case catch rnis_data_att_cache:is_register(I) of
               false->
                 lager:info("att is not registred"),
                 [{{tmp,I}, extend_data(ReceiveTime, TimeList, [])} | Acc];
