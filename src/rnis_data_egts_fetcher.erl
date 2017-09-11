@@ -232,10 +232,10 @@ filter_data(ReceiveTime, Data) when is_list(Data) ->
       _ ->
         case ID of
           I when is_integer(I)->
-            case mnesia:dirty_read(att_descr, I) of
-              []->
+            case rnis_data_att_cache:is_register(I) of
+              false->
                 [{{tmp,I}, extend_data(ReceiveTime, TimeList, [])} | Acc];
-              List when is_list(List)->
+              true->
                 [{I, extend_data(ReceiveTime, TimeList, [])} | Acc]
             end;
           DevID->
