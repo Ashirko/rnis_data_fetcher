@@ -234,8 +234,10 @@ filter_data(ReceiveTime, Data) when is_list(Data) ->
           I when is_integer(I)->
             case rnis_data_att_cache:is_register(I) of
               false->
+                lager:info("att is not registred"),
                 [{{tmp,I}, extend_data(ReceiveTime, TimeList, [])} | Acc];
               true->
+                lager:info("att is registred"),
                 [{I, extend_data(ReceiveTime, TimeList, [])} | Acc]
             end;
           DevID->
