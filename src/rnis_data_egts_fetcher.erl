@@ -60,8 +60,14 @@ init([]) ->
   {ok, data, #state{socket = Socket, next = process_message}, ?INIT_TIMEOUT}.
 
 data(timeout, #state{socket=Socket, is_ready = false}=State) ->
-  subscribe_data(Socket),
-  {next_state, data, State#state{is_ready = true}, ?CONNECT_TIMEOUT};
+  case catch rnis_data_att_cache:is_ready() of
+    true->
+      subscribe_data(Socket),
+      {next_state, data, State#state{is_ready = true}, ?CONNECT_TIMEOUT};
+    Else->
+      lager:info("wait for rnis_data_att_cache: ~p", [Else]),
+      {next_state, data, State, ?INIT_TIMEOUT}
+  end;
 data(timeout, State) ->
   process_data(timeout, State);
 data(Msg, State) ->
