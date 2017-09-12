@@ -41,7 +41,6 @@
 -define(MAXBUFSZ, 102400). %% 100 kilobytes
 
 -define(NEXT_DATA(Data, State, Rest, Answer),
-%%  {next, #parser_result{data = Data, state = State#state{buffer = Rest}, answer = Answer, next = check_data}}).
   {next, #parser_result{data = Data, state = State#state{buffer = Rest}, answer = Answer, next = check_data}, ?RIGHT_NOW}).
 
 -define(NEXT(ReceiveTime, Reply, Data, State, Next, TimeOut),
@@ -62,7 +61,7 @@ init([]) ->
 data(timeout, #state{socket=Socket, is_ready = false}=State) ->
   case catch rnis_data_att_cache:is_ready() of
     true->
-%%      subscribe_data(Socket),
+      subscribe_data(Socket),
       {next_state, data, State#state{is_ready = true}, ?CONNECT_TIMEOUT};
     Else->
       lager:info("wait for rnis_data_att_cache: ~p", [Else]),
