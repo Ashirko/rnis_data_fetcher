@@ -55,7 +55,7 @@ start_link() ->
 
 init([]) ->
   {ok, Socket} = connect_to_egts(),
-  lager:info("rnis_data_fetcher started"),
+%%  lager:info("rnis_data_fetcher started"),
   {ok, data, #state{socket = Socket, next = process_message}, ?INIT_TIMEOUT}.
 
 data(timeout, #state{socket=Socket, is_ready = false}=State) ->
@@ -64,7 +64,7 @@ data(timeout, #state{socket=Socket, is_ready = false}=State) ->
       subscribe_data(Socket),
       {next_state, data, State#state{is_ready = true}, ?CONNECT_TIMEOUT};
     Else->
-      lager:info("wait for rnis_data_att_cache: ~p", [Else]),
+%%      lager:info("wait for rnis_data_att_cache: ~p", [Else]),
       {next_state, data, State, ?INIT_TIMEOUT}
   end;
 data(timeout, State) ->
@@ -77,20 +77,20 @@ data(Msg, _From, State) ->
   {stop, unknown_message, State}.
 
 process_message(NewAddBuf, #state{buffer = CurrBuf} = State) when size(CurrBuf) > ?MAXBUFSZ ->
-  lager:info("process_message 0"),
+%%  lager:info("process_message 0"),
   data(NewAddBuf, State#state{buffer = <<>>});
 process_message(NewAddBuf, #state{buffer = CurrBuf, packetId = AnsPID, recordId = AnsRID} = State) ->
-  lager:info("process_message 1: ~p", [size(CurrBuf)]),
+%%  lager:info("process_message 1: ~p", [size(CurrBuf)]),
   case handle_header(<<CurrBuf/binary, NewAddBuf/binary>>) of
     {continue, Rest} ->
-      lager:info("process_message 2"),
+%%      lager:info("process_message 2"),
       {next,
         #parser_result{
           state = State#state{buffer = Rest},
           next = process_message
         }, ?TIMEOUT};
     {ok, ResultList, PackID, RecIDs, Rest} ->
-      lager:info("process_message 3"),
+%%      lager:info("process_message 3"),
       Answer = answer(PackID, RecIDs, AnsPID, AnsRID),
       ?NEXT_DATA(process_result(0, lists:sort(lists:flatten(ResultList))),
         State#state{packetId = (AnsPID + 1) band 16#ffff, recordId = (AnsRID + 1) band 16#ffff}, Rest, Answer);
@@ -166,17 +166,17 @@ code_change(_OldVsn, StateName, #state{timeout = TimeOut} = StateData, _Extra) -
   {ok, StateName, StateData, TimeOut}.
 
 process_data(MsgData, #state{next = Next} = State) ->
-  lager:info("process_data: ~p, next: ~p", [MsgData, Next]),
+%%  lager:info("process_data: ~p, next: ~p", [MsgData, Next]),
   CurTime = zont_time_util:system_time(millisec),
   case catch ?MODULE:Next(MsgData, State) of
 %%  case catch process_message(MsgData, State) of
     {next, #parser_result{data = Data, answer = Answer, next = NewNext, state = NewState}} ->
-      lager:info("process message success 1: ~p", [Data]),
-      lager:info("process message success 2: ~p", [Answer]),
+%%      lager:info("process message success 1: ~p", [Data]),
+%%      lager:info("process message success 2: ~p", [Answer]),
       ?NEXT(CurTime, Answer, Data, NewState, NewNext, ?ACTIVE_TIMEOUT);
     {next, #parser_result{data = Data, answer = Answer, next = NewNext, state = NewState}, Timeout} ->
-      lager:info("process message success 3: ~p", [Data]),
-      lager:info("process message success 4: ~p", [Answer]),
+%%      lager:info("process message success 3: ~p", [Data]),
+%%      lager:info("process message success 4: ~p", [Answer]),
       ?NEXT(CurTime, Answer, Data, NewState, NewNext, Timeout);
     {error, Error, #parser_result{data = Data, answer = Answer, next = NewNext, state = NewState}} ->
       lager:error("parser error:  ~p", [Error]),
@@ -193,19 +193,15 @@ process_data(MsgData, #state{next = Next} = State) ->
   end.
 
 check_data(timeout, #state{buffer = <<>>} = State) ->
-  lager:info("check_data 1"),
   {next, #parser_result{state = State, next = process_message}, ?TIMEOUT};
 check_data(timeout, State) ->
-  lager:info("check_data 2"),
   process_message(<<>>, State);
 check_data(NewAddBuf, State) when is_binary(NewAddBuf) ->
-  lager:info("check_data 3"),
   process_message(NewAddBuf, State).
 
 next(ReceiveTime, Reply, DataToProcess,
     #state{socket = Sock} = State) ->
   ok = reply(Sock, Reply),
-  lager:info("DataToProcess: ~p", [DataToProcess]),
   ok = zont_process(ReceiveTime, DataToProcess),
   ok = set_active(Sock),
   State.
@@ -215,16 +211,16 @@ reply(_Sock, undefined) ->
 reply(_Sock, <<>>) ->
   ok;
 reply(Sock, Data) ->
-  lager:info("send data: ~p", [Data]),
+%%  lager:info("send data: ~p", [Data]),
   gen_tcp:send(Sock, Data).
 
 zont_process(ReceiveTime, Data) when is_list(Data) ->
   case filter_data(ReceiveTime, Data) of
     empty ->
-      lager:info("Data empty"),
+%%      lager:info("Data empty"),
       ok;
     Data1 ->
-      lager:info("Data to data_processor: ~p", [Data1]),
+%%      lager:info("Data to data_processor: ~p", [Data1]),
       rnis_data_processor:process(Data1)
   end;
 zont_process(_, _) ->
@@ -242,10 +238,10 @@ filter_data(ReceiveTime, Data) when is_list(Data) ->
           I when is_integer(I)->
             case catch rnis_data_att_cache:is_register(I) of
               false->
-                lager:info("att is not registred"),
+%%                lager:info("att is not registred"),
                 [{{tmp,I}, extend_data(ReceiveTime, TimeList, [])} | Acc];
               true->
-                lager:info("att is registred"),
+%%                lager:info("att is registred"),
                 [{I, extend_data(ReceiveTime, TimeList, [])} | Acc]
             end;
           DevID->
@@ -309,7 +305,7 @@ auth_request()->
 subscribe_data(Socket)->
   %%todo subscribe data
   Msg = auth_request(),
-  lager:info("subscribe msg: ~p", [Msg]),
+%%  lager:info("subscribe msg: ~p", [Msg]),
   gen_tcp:send(Socket, Msg).
 
 
@@ -390,13 +386,13 @@ analyze_subrecords(Service, _SubRecords) ->
 analyze_subrecords_auth(<<16#05, Size:16/little, Data:Size/binary, Rest/binary>>) ->
   [analyze_subrecord_auth_05(Data) | analyze_subrecords_auth(Rest)];
 analyze_subrecords_auth(<<Type:8, Size:16/little, Data:Size/binary, Rest/binary>>) ->
-  lager:info("Subrecord: Type: ~p, Data: ~p", [Type, Data]),
+%%  lager:info("Subrecord: Type: ~p, Data: ~p", [Type, Data]),
   analyze_subrecords_auth(Rest);
 analyze_subrecords_auth(_) ->
   [].
 analyze_subrecord_auth_05(<<16#00, DispID:32/little>>) ->
   PID = self(),
-  lager:info("auth_05: ~p", [DispID]),
+%%  lager:info("auth_05: ~p", [DispID]),
   PID ! {cmd, {auth, subscribe, DispID}, PID},
   ok;
 analyze_subrecord_auth_05(_Data) ->
