@@ -55,6 +55,7 @@ start_link() ->
 
 init([]) ->
   {ok, Socket} = connect_to_egts(),
+  rnis_data_egts_fetcher_logger:start_link(),
 %%  lager:info("rnis_data_fetcher started"),
   {ok, data, #state{socket = Socket, next = process_message}, ?INIT_TIMEOUT}.
 
@@ -143,6 +144,7 @@ handle_info({tcp_error, Socket, Reason}, _StateName, #state{socket = Socket} = S
   {stop, normal, State};
 handle_info({tcp, _Sock, MsgData}, data, State) ->
 %%  lager:info("handle tcp message: ~p", [MsgData]),
+  rnis_data_egts_fetcher_logger:add_buf(size(MsgData)),
   process_data(MsgData, State);
 handle_info(MsgData, _StateName, State) ->
   lager:error("ehat ~p", [MsgData]),
