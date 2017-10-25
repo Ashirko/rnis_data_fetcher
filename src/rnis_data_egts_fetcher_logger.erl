@@ -24,7 +24,7 @@
 start_link()->
 	gen_server:start_link({local,?MODULE}, ?MODULE, [],[]).
 stop()->
-	gen_server:call(?MODULE, stop).
+	gen_server:cast(?MODULE, stop).
 add_buf(Data)->
 	gen_server:cast(?MODULE,{add_buf,Data}).
 
@@ -40,6 +40,8 @@ init([])->
 
 handle_cast({add_buf,Data},#state{buf=Buf}=State)->
 	{noreply,State#state{buf=Buf+Data}};
+handle_cast(stop,State)->
+	{stop, normal, State};
 handle_cast(_Request,State)->
 	{stop, unknown_message, State}.
 
@@ -59,11 +61,15 @@ terminate(_Reason,#state{timer_ref=Ref})->
 	ok.
 
 code_change(_OldVsn, State, _Extra) ->
-  {ok, State}.
+	{ok, State}.
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+to_file_global(Buf,Time)->
+	Nodes=riak_core_node_watcher:nodes(zont_core),
+	rpc:multicall(Nodes,?MODULE,to_file_local, [Buf,Time]).
 
 to_file_local(Buf,Time)->
 	{ok,[[HomeDir]]} = init:get_argument(home),	
@@ -72,6 +78,3 @@ to_file_local(Buf,Time)->
 	Data= <<Time/binary," : ", BufBinary/binary," bytes\n" >>,
 	file:write_file(Path,Data,[append]).
 
-to_file_global(Buf,Time)->
-	Nodes=riak_core_node_watcher:nodes(zont_core),
-	rpc:multicall(Nodes,?MODULE,to_file_local, [Buf,Time]).

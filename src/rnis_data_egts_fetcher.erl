@@ -153,6 +153,7 @@ handle_info(MsgData, _StateName, State) ->
 
 terminate(Reason, _StateName, #state{socket = Socket}) ->
   lager:info("terminate rnis_data_egts_fetcher with reason: ~p" , [Reason]),
+  rnis_data_egts_fetcher_logger:stop(),
   gen_tcp:close(Socket),
   ok.
 
