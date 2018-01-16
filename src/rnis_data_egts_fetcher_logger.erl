@@ -22,6 +22,7 @@
 %% ====================================================================
 
 start_link()->
+	lager:info("start rnis_data_egts_fetcher_logger on node ~p", [node()]),
 	gen_server:start_link({local,?MODULE}, ?MODULE, [],[]).
 stop()->
 	gen_server:cast(?MODULE, stop).
@@ -56,7 +57,8 @@ handle_info(_Info,State)->
 handle_call(_Request,_From,State)->
 	{stop, unknown_message, State}.
 
-terminate(_Reason,#state{timer_ref=Ref})-> 
+terminate(Reason,#state{timer_ref=Ref})-> 
+	lager:info("terminate rnis_data_egts_fetcher_logger with reason: ~p" , [Reason]),
 	timer:cancel(Ref),
 	ok.
 
