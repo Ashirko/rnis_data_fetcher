@@ -30,5 +30,8 @@ init([]) ->
         rnis_data_egts_fetcher,
         {rnis_data_egts_fetcher, start_link, []},
         permanent, 5000, worker, [rnis_data_egts_fetcher]},
-    {ok, {SupFlags, [DataFetcher]}}.
+	DataFetcherLogger = {rnis_data_egts_fetcher_logger,
+						 {rnis_data_egts_fetcher_logger,start_link,[]},
+						 permanent,5000,worker,[rnis_data_egts_fetcher_logger]},
+    {ok, {SupFlags, [DataFetcher,DataFetcherLogger]}}.
 
