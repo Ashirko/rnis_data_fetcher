@@ -224,7 +224,7 @@ filter_data(ReceiveTime, Data) when is_list(Data) ->
               true->
                 [{I, extend_data(ReceiveTime, TimeList, [])} | Acc];
               _->
-                [{{tmp,I}, extend_data(ReceiveTime, TimeList, [])} | Acc];
+                [{{tmp,I}, extend_data(ReceiveTime, TimeList, [])} | Acc]
             end;
           DevID->
             [{{tmp,DevID}, extend_data(ReceiveTime, TimeList, [])} | Acc]
