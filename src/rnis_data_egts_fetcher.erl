@@ -347,7 +347,7 @@ analyze_subrecords(Service, _SubRecords) ->
 %% Analyze subrecords auth
 analyze_subrecords_auth(<<16#05, Size:16/little, Data:Size/binary, Rest/binary>>) ->
   [analyze_subrecord_auth_05(Data) | analyze_subrecords_auth(Rest)];
-analyze_subrecords_auth(<<Type:8, Size:16/little, Data:Size/binary, Rest/binary>>) ->
+analyze_subrecords_auth(<<_:8, Size:16/little, _:Size/binary, Rest/binary>>) ->
   analyze_subrecords_auth(Rest);
 analyze_subrecords_auth(_) ->
   [].
